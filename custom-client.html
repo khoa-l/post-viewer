@@ -358,15 +358,25 @@
               `${this.backendUrl}/api/reddit/${shortPath}`,
               {
                 headers: { Authorization: `Bearer ${this.token}` },
-                redirect: "manual",
               },
             );
 
-            // Reddit API returns the full post data even for shortlinks
-            // Extract the permalink from the response
+            if (!response.ok) {
+              console.error("Shortlink resolution failed:", response.status);
+              return null;
+            }
+
             const data = await response.json();
-            if (data && data.permalink) {
-              return data.permalink.replace(/^\//, "").replace(/\/$/, "");
+            console.log("Shortlink response:", data);
+
+            // Check if it's a listing response (shortlink resolved)
+            if (data && data.kind === "Listing" && data.data?.children?.[0]) {
+              const post = data.data.children[0].data;
+              if (post.permalink) {
+                const resolved = post.permalink.replace(/^\//, "").replace(/\/$/, "");
+                console.log("Resolved shortlink to:", resolved);
+                return resolved;
+              }
             }
 
             return null;
