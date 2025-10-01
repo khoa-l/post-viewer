@@ -9,6 +9,9 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Serve static files from parent directory for frontend
+app.use(express.static(path.join(__dirname, "..")));
+
 // Reddit OAuth configuration
 const REDDIT_CONFIG = {
   clientId: process.env.REDDIT_CLIENT_ID || "i3It5V7LR6o2s5BCTy-82A", // Replace with your Reddit app client ID
@@ -22,7 +25,7 @@ const REDDIT_CONFIG = {
 // Middleware
 app.use(
   cors({
-    origin: [
+    origin: process.env.FRONTEND_URL || [
       "http://localhost:3000",
       "http://localhost:8000",
       "http://127.0.0.1:3000",

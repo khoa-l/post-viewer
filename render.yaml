@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: reddit-post-viewer
+    env: node
+    buildCommand: cd reddit-oauth-backend && npm install
+    startCommand: cd reddit-oauth-backend && node server.js
+    envVars:
+      - key: REDDIT_CLIENT_ID
+        sync: false
+      - key: REDDIT_CLIENT_SECRET
+        sync: false
+      - key: REDDIT_REDIRECT_URI
+        sync: false
