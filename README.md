@@ -22,12 +22,19 @@ View Reddit posts with comments, images, videos, galleries, and links.
 
 ## Configuration
 
-Token is hardcoded in `custom-client.html` line 271-272.
+Token is stored in `.env` file:
+
+```bash
+# Edit .env file
+REDDIT_ACCESS_TOKEN=your_token_here
+REDDIT_CLIENT_ID=your_client_id
+REDDIT_CLIENT_SECRET=your_client_secret
+```
 
 To get a new token:
 1. Visit `http://localhost:8000/auth.html`
 2. Authenticate with Reddit
-3. Copy token to `custom-client.html` at `CONFIG.token`
+3. Copy token to `.env` file
 
 ## Usage
 

@@ -1,10 +1,12 @@
 // Reddit OAuth Backend Server
 // Run with: node server.js
 
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
-const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -14,12 +16,11 @@ app.use(express.static(path.join(__dirname, "..")));
 
 // Reddit OAuth configuration
 const REDDIT_CONFIG = {
-  clientId: process.env.REDDIT_CLIENT_ID || "i3It5V7LR6o2s5BCTy-82A", // Replace with your Reddit app client ID
-  clientSecret:
-    process.env.REDDIT_CLIENT_SECRET || "6m2RxtVnEPLTVBePLSZULLxCiA_GJA", // Replace with your Reddit app secret
-  redirectUri:
-    process.env.REDDIT_REDIRECT_URI || "http://localhost:8000/auth.html", // Your frontend URL
-  userAgent: "RedditClient/1.0 by YourUsername", // Change 'YourUsername' to your actual Reddit username
+  clientId: process.env.REDDIT_CLIENT_ID || "i3It5V7LR6o2s5BCTy-82A",
+  clientSecret: process.env.REDDIT_CLIENT_SECRET || "6m2RxtVnEPLTVBePLSZULLxCiA_GJA",
+  redirectUri: process.env.REDDIT_REDIRECT_URI || "http://localhost:8000/auth.html",
+  userAgent: "RedditClient/1.0 by YourUsername",
+  accessToken: process.env.REDDIT_ACCESS_TOKEN,
 };
 
 // Middleware
@@ -49,9 +50,18 @@ app.get("/", (req, res) => {
     status: "running",
     endpoints: {
       "GET /": "This info",
+      "GET /api/config": "Get client configuration",
       "POST /oauth/token": "Exchange OAuth code for token",
       "GET /api/reddit/*": "Proxy Reddit API calls",
     },
+  });
+});
+
+// Config endpoint - serves token and backend URL
+app.get("/api/config", (req, res) => {
+  res.json({
+    token: REDDIT_CONFIG.accessToken,
+    backendUrl: process.env.BACKEND_URL || `http://localhost:${PORT}`,
   });
 });
 

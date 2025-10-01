@@ -68,7 +68,6 @@
         margin-bottom: 1rem;
       }
 
-
       .post-content {
         padding: 0.5rem 1rem;
       }
@@ -267,19 +266,31 @@
     </div>
 
     <script>
-      const CONFIG = {
-        token:
-          "eyJhbGciOiJSUzI1NiIsImtpZCI6IlNIQTI1NjpzS3dsMnlsV0VtMjVmcXhwTU40cWY4MXE2OWFFdWFyMnpLMUdhVGxjdWNZIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ1c2VyIiwiZXhwIjoxNzU5Mzc5MDAxLjg0ODkzLCJpYXQiOjE3NTkyOTI2MDEuODQ4OTMsImp0aSI6Imh0V3B0QWhjOEpmNldpd1BaOTRMZ3A1U3RVSzduUSIsImNpZCI6ImkzSXQ1VjdMUjZvMnM1QkNUeS04MkEiLCJsaWQiOiJ0Ml8xdmN5bmp6dDF4IiwiYWlkIjoidDJfMXZjeW5qenQxeCIsImxjYSI6MTc1NDgwMjkyODQyMiwic2NwIjoiZUp5S1ZpcEtUVXhSMGxIS3JTd3VUU3BLVFVuSkxDbFdpZ1VFQUFEX18xNFlDQ2ciLCJyY2lkIjoicWZaNTQ5UGtsbVh3YmRsdEVwcXpDRWVFTkVFYzNBaS14TG1JcUNfVXBiUSIsImZsbyI6OH0.JmXYUe7I0dtlxMJXEIbcXnt3G4JOhhU0wn2OhfVTa8nRmt2M9alPKxnFgogzBWl5YjJFZbWyG75Rgul7XcWE7RQJuaMK1jQaxa_HH__a8JgUGAjxiWUuilnvgkFYNcTkLMQk9RkzygK2E9nBhYi-kPdZIT4RK21YTaqooiLlPb-wfLohCWzo5zBSAjKdh3qePIBicBTeMnszM7RZme1QCwOXNc2BwlHUzZVzqp2NUdv4mNo49XxhwmpAGLhx68gqDDTU_YJVTgWp9S13R3UwfHFV4Q1DDnEM2d6OLbSNLOikbEWlLSexRgmnWhMsOgcpN-ohJoz6bHS2CGfyt-kqpQ",
-        backendUrl: "http://localhost:3001",
-      };
-
       class RedditPostViewer {
         constructor() {
-          this.token =
-            CONFIG.token || localStorage.getItem("reddit_access_token");
-          this.backendUrl = CONFIG.backendUrl;
           this.galleryIndex = 0;
-          this.init();
+          this.initConfig();
+        }
+
+        async initConfig() {
+          try {
+            const backendUrl = window.location.origin.includes('localhost')
+              ? 'http://localhost:3001'
+              : window.location.origin;
+
+            const response = await fetch(`${backendUrl}/api/config`);
+            const config = await response.json();
+
+            this.token = config.token || localStorage.getItem("reddit_access_token");
+            this.backendUrl = config.backendUrl;
+
+            this.init();
+          } catch (error) {
+            console.error('Config error:', error);
+            this.token = localStorage.getItem("reddit_access_token");
+            this.backendUrl = "http://localhost:3001";
+            this.init();
+          }
         }
 
         init() {
@@ -347,8 +358,12 @@
               <div class="post-content">
                 <h1 class="post-title">${this.decode(post.title)}</h1>
                 <div class="post-meta">
-                  <span>Posted by <a href="https://reddit.com/u/${post.author}" target="_blank">u/${post.author}</a></span>
-                  <span>in <a href="https://reddit.com/r/${post.subreddit}" target="_blank">r/${post.subreddit}</a></span>
+                  <span>Posted by <a href="https://reddit.com/u/${
+                    post.author
+                  }" target="_blank">u/${post.author}</a></span>
+                  <span>in <a href="https://reddit.com/r/${
+                    post.subreddit
+                  }" target="_blank">r/${post.subreddit}</a></span>
                   <span>${this.formatTime(post.created_utc)}</span>
                   <span>${this.formatNum(post.num_comments)} comments</span>
                 </div>
@@ -356,7 +371,9 @@
               </div>
             </div>
             <div class="comments-container">
-              <div class="comments-header">Comments (${this.formatNum(post.num_comments)})</div>
+              <div class="comments-header">Comments (${this.formatNum(
+                post.num_comments,
+              )})</div>
               <div>${this.renderComments(comments)}</div>
             </div>
           `;
@@ -444,13 +461,18 @@
               `;
 
                 if (d.replies?.data?.children) {
-                  html += this.renderComments(d.replies.data.children, depth + 1);
+                  html += this.renderComments(
+                    d.replies.data.children,
+                    depth + 1,
+                  );
                 }
 
                 html += "</div>";
                 return html;
               } else if (comment.kind === "more" && comment.data?.count > 0) {
-                return `<div class="comment-more">${comment.data.count} more ${comment.data.count !== 1 ? "comments" : "comment"}</div>`;
+                return `<div class="comment-more">${comment.data.count} more ${
+                  comment.data.count !== 1 ? "comments" : "comment"
+                }</div>`;
               }
               return "";
             })
