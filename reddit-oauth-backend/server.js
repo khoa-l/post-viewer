@@ -33,6 +33,13 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Allow iframe embedding
+app.use((req, res, next) => {
+  res.removeHeader("X-Frame-Options");
+  res.setHeader("Content-Security-Policy", "frame-ancestors *");
+  next();
+});
+
 // Serve static files (optional - you can serve your HTML from here)
 app.use(express.static("public"));
 
