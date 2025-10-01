@@ -26,14 +26,7 @@ const REDDIT_CONFIG = {
 // Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || [
-      "http://localhost:3000",
-      "http://localhost:8000",
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:8000",
-      "http://192.168.1.79:3000",
-      "http://192.168.1.79:8000",
-    ],
+    origin: process.env.FRONTEND_URL || true,
     credentials: true,
   }),
 );
@@ -180,11 +173,6 @@ app.use((error, req, res, next) => {
     error: "Internal server error",
     message: error.message,
   });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: "Endpoint not found" });
 });
 
 app.listen(PORT, () => {

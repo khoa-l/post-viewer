@@ -278,18 +278,23 @@
               ? 'http://localhost:3001'
               : window.location.origin;
 
+            console.log('Fetching config from:', backendUrl);
             const response = await fetch(`${backendUrl}/api/config`);
+
+            if (!response.ok) {
+              throw new Error(`Config fetch failed: ${response.status}`);
+            }
+
             const config = await response.json();
+            console.log('Config loaded:', { hasToken: !!config.token, backendUrl: config.backendUrl });
 
             this.token = config.token || localStorage.getItem("reddit_access_token");
-            this.backendUrl = config.backendUrl;
+            this.backendUrl = config.backendUrl || backendUrl;
 
             this.init();
           } catch (error) {
             console.error('Config error:', error);
-            this.token = localStorage.getItem("reddit_access_token");
-            this.backendUrl = "http://localhost:3001";
-            this.init();
+            this.showError(`Failed to load config: ${error.message}. Check browser console and ensure REDDIT_ACCESS_TOKEN is set in Render environment variables.`);
           }
         }
 
@@ -315,8 +320,17 @@
           this.showLoading();
 
           try {
-            const path = this.parseUrl(url);
+            let path = this.parseUrl(url);
             if (!path) throw new Error("Invalid Reddit URL");
+
+            // Handle Reddit shortlinks (e.g., /r/sub/s/xxxxx)
+            if (path.match(/^r\/[^\/]+\/s\/[a-zA-Z0-9]+/)) {
+              console.log("Detected shortlink, resolving...");
+              const resolvedPath = await this.resolveShortlink(path);
+              if (resolvedPath) {
+                path = resolvedPath;
+              }
+            }
 
             const response = await fetch(
               `${this.backendUrl}/api/reddit/${path}.json`,
@@ -335,6 +349,30 @@
           } catch (error) {
             console.error("Error:", error);
             this.showError(`Failed to load post: ${error.message}`);
+          }
+        }
+
+        async resolveShortlink(shortPath) {
+          try {
+            const response = await fetch(
+              `${this.backendUrl}/api/reddit/${shortPath}`,
+              {
+                headers: { Authorization: `Bearer ${this.token}` },
+                redirect: "manual",
+              },
+            );
+
+            // Reddit API returns the full post data even for shortlinks
+            // Extract the permalink from the response
+            const data = await response.json();
+            if (data && data.permalink) {
+              return data.permalink.replace(/^\//, "").replace(/\/$/, "");
+            }
+
+            return null;
+          } catch (error) {
+            console.error("Error resolving shortlink:", error);
+            return null;
           }
         }
 
