@@ -7,9 +7,17 @@ require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
+const fs = require("fs");
+const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Cache directory
+const CACHE_DIR = path.join(__dirname, "cache");
+if (!fs.existsSync(CACHE_DIR)) {
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+}
 
 // Serve static files from parent directory for frontend
 app.use(express.static(path.join(__dirname, "..")));
@@ -131,6 +139,42 @@ app.post("/oauth/token", async (req, res) => {
   }
 });
 
+// Helper: Generate cache key from path
+function getCacheKey(redditPath) {
+  return crypto.createHash("md5").update(redditPath).digest("hex");
+}
+
+// Helper: Get cached post data
+function getCachedPost(redditPath) {
+  const cacheKey = getCacheKey(redditPath);
+  const cacheFile = path.join(CACHE_DIR, `${cacheKey}.json`);
+
+  if (fs.existsSync(cacheFile)) {
+    try {
+      const data = fs.readFileSync(cacheFile, "utf8");
+      console.log("Cache hit:", redditPath);
+      return JSON.parse(data);
+    } catch (error) {
+      console.error("Cache read error:", error);
+      return null;
+    }
+  }
+  return null;
+}
+
+// Helper: Save post data to cache
+function cachePost(redditPath, data) {
+  const cacheKey = getCacheKey(redditPath);
+  const cacheFile = path.join(CACHE_DIR, `${cacheKey}.json`);
+
+  try {
+    fs.writeFileSync(cacheFile, JSON.stringify(data, null, 2));
+    console.log("Cached post:", redditPath);
+  } catch (error) {
+    console.error("Cache write error:", error);
+  }
+}
+
 // Proxy Reddit API calls (to handle CORS and add authentication)
 app.get("/api/reddit/*", async (req, res) => {
   const redditPath = req.params[0];
@@ -140,9 +184,15 @@ app.get("/api/reddit/*", async (req, res) => {
     return res.status(401).json({ error: "Authorization header required" });
   }
 
+  // Check cache first
+  const cachedData = getCachedPost(redditPath);
+  if (cachedData) {
+    return res.json(cachedData);
+  }
+
   try {
     const redditUrl = `https://oauth.reddit.com/${redditPath}`;
-    console.log("Proxying Reddit API call:", redditUrl);
+    console.log("Fetching from Reddit API:", redditUrl);
 
     const response = await fetch(redditUrl, {
       headers: {
@@ -157,6 +207,9 @@ app.get("/api/reddit/*", async (req, res) => {
       console.error("Reddit API error:", data);
       return res.status(response.status).json(data);
     }
+
+    // Cache the successful response
+    cachePost(redditPath, data);
 
     res.json(data);
   } catch (error) {
