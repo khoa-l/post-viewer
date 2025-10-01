@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reddit Post Viewer</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+          "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+          "Helvetica Neue", sans-serif;
+        background-color: #dae0e6;
+        color: #1c1c1c;
+        line-height: 1.5;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+
+      .error,
+      .loading {
+        background: #fff;
+        border-radius: 4px;
+        padding: 2rem;
+        text-align: center;
+      }
+
+      .error {
+        border: 1px solid #ff4500;
+        color: #ff4500;
+      }
+
+      .loading {
+        color: #666;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-radius: 50%;
+        border-top-color: #ff4500;
+        animation: spin 1s linear infinite;
+        margin-bottom: 1rem;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .post-container {
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+      }
+
+
+      .post-content {
+        padding: 0.5rem 1rem;
+      }
+
+      .post-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+      }
+
+      .post-meta {
+        font-size: 0.75rem;
+        color: #7c7c7c;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .post-meta a {
+        color: #0079d3;
+        text-decoration: none;
+      }
+
+      .post-meta a:hover {
+        text-decoration: underline;
+      }
+
+      .post-body {
+        margin: 1rem 0;
+      }
+
+      .post-selftext {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .post-media {
+        margin: 1rem 0;
+      }
+
+      .post-image,
+      .post-video {
+        width: 100%;
+        height: auto;
+        border-radius: 4px;
+      }
+
+      .post-video {
+        max-height: 600px;
+      }
+
+      .post-link {
+        display: block;
+        padding: 1rem;
+        background: #f6f7f8;
+        border: 1px solid #edeff1;
+        border-radius: 4px;
+        color: #0079d3;
+        text-decoration: none;
+        word-break: break-all;
+      }
+
+      .post-link:hover {
+        background: #edeff1;
+      }
+
+      .post-thumbnail {
+        max-width: 140px;
+        height: auto;
+        border-radius: 4px;
+        margin-right: 1rem;
+      }
+
+      .gallery-container {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+        border-radius: 4px;
+      }
+
+      .gallery-images {
+        display: flex;
+        transition: transform 0.3s ease;
+      }
+
+      .gallery-image {
+        min-width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .gallery-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        padding: 1rem;
+        cursor: pointer;
+        font-size: 1.5rem;
+        z-index: 10;
+      }
+
+      .gallery-nav:hover {
+        background: rgba(0, 0, 0, 0.7);
+      }
+
+      .gallery-prev {
+        left: 0;
+      }
+      .gallery-next {
+        right: 0;
+      }
+
+      .gallery-indicator {
+        position: absolute;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+      }
+
+      .comments-container {
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 1rem;
+      }
+
+      .comments-header {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #edeff1;
+      }
+
+      .comment {
+        margin-bottom: 1rem;
+      }
+
+      .comment.nested {
+        margin-left: 1.5rem;
+        border-left: 2px solid #edeff1;
+        padding-left: 1rem;
+      }
+
+      .comment-author {
+        font-size: 0.75rem;
+        color: #7c7c7c;
+        margin-bottom: 0.25rem;
+      }
+
+      .comment-author-name {
+        color: #0079d3;
+        font-weight: 600;
+      }
+
+      .comment-body {
+        font-size: 0.875rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        margin-bottom: 0.5rem;
+      }
+
+      .comment-more {
+        color: #0079d3;
+        font-size: 0.875rem;
+        cursor: pointer;
+        margin-left: 1.5rem;
+        font-weight: 500;
+      }
+
+      .comment-more:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          margin: 0.5rem auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="app"></div>
+    </div>
+
+    <script>
+      const CONFIG = {
+        token:
+          "eyJhbGciOiJSUzI1NiIsImtpZCI6IlNIQTI1NjpzS3dsMnlsV0VtMjVmcXhwTU40cWY4MXE2OWFFdWFyMnpLMUdhVGxjdWNZIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ1c2VyIiwiZXhwIjoxNzU5Mzc5MDAxLjg0ODkzLCJpYXQiOjE3NTkyOTI2MDEuODQ4OTMsImp0aSI6Imh0V3B0QWhjOEpmNldpd1BaOTRMZ3A1U3RVSzduUSIsImNpZCI6ImkzSXQ1VjdMUjZvMnM1QkNUeS04MkEiLCJsaWQiOiJ0Ml8xdmN5bmp6dDF4IiwiYWlkIjoidDJfMXZjeW5qenQxeCIsImxjYSI6MTc1NDgwMjkyODQyMiwic2NwIjoiZUp5S1ZpcEtUVXhSMGxIS3JTd3VUU3BLVFVuSkxDbFdpZ1VFQUFEX18xNFlDQ2ciLCJyY2lkIjoicWZaNTQ5UGtsbVh3YmRsdEVwcXpDRWVFTkVFYzNBaS14TG1JcUNfVXBiUSIsImZsbyI6OH0.JmXYUe7I0dtlxMJXEIbcXnt3G4JOhhU0wn2OhfVTa8nRmt2M9alPKxnFgogzBWl5YjJFZbWyG75Rgul7XcWE7RQJuaMK1jQaxa_HH__a8JgUGAjxiWUuilnvgkFYNcTkLMQk9RkzygK2E9nBhYi-kPdZIT4RK21YTaqooiLlPb-wfLohCWzo5zBSAjKdh3qePIBicBTeMnszM7RZme1QCwOXNc2BwlHUzZVzqp2NUdv4mNo49XxhwmpAGLhx68gqDDTU_YJVTgWp9S13R3UwfHFV4Q1DDnEM2d6OLbSNLOikbEWlLSexRgmnWhMsOgcpN-ohJoz6bHS2CGfyt-kqpQ",
+        backendUrl: "http://localhost:3001",
+      };
+
+      class RedditPostViewer {
+        constructor() {
+          this.token =
+            CONFIG.token || localStorage.getItem("reddit_access_token");
+          this.backendUrl = CONFIG.backendUrl;
+          this.galleryIndex = 0;
+          this.init();
+        }
+
+        init() {
+          const url = new URLSearchParams(window.location.search).get("url");
+
+          if (!url) {
+            return this.showError(
+              "No post URL provided. Add ?url=POST_URL to the page URL.",
+            );
+          }
+
+          if (!this.token) {
+            return this.showError(
+              'No token found. <a href="auth.html">Authenticate first</a>.',
+            );
+          }
+
+          this.loadPost(url);
+        }
+
+        async loadPost(url) {
+          this.showLoading();
+
+          try {
+            const path = this.parseUrl(url);
+            if (!path) throw new Error("Invalid Reddit URL");
+
+            const response = await fetch(
+              `${this.backendUrl}/api/reddit/${path}.json`,
+              {
+                headers: { Authorization: `Bearer ${this.token}` },
+              },
+            );
+
+            if (!response.ok) throw new Error("Failed to fetch post");
+
+            const [postListing, commentsListing] = await response.json();
+            const post = postListing.data.children[0].data;
+            const comments = commentsListing.data.children;
+
+            this.displayPost(post, comments);
+          } catch (error) {
+            console.error("Error:", error);
+            this.showError(`Failed to load post: ${error.message}`);
+          }
+        }
+
+        parseUrl(url) {
+          let path = url;
+
+          if (url.includes("reddit.com")) {
+            path = new URL(url.startsWith("http") ? url : `https://${url}`)
+              .pathname;
+          }
+
+          return path
+            .replace(/^\//, "")
+            .replace(/\/$/, "")
+            .replace(/\.json$/, "");
+        }
+
+        displayPost(post, comments) {
+          document.getElementById("app").innerHTML = `
+            <div class="post-container">
+              <div class="post-content">
+                <h1 class="post-title">${this.decode(post.title)}</h1>
+                <div class="post-meta">
+                  <span>Posted by <a href="https://reddit.com/u/${post.author}" target="_blank">u/${post.author}</a></span>
+                  <span>in <a href="https://reddit.com/r/${post.subreddit}" target="_blank">r/${post.subreddit}</a></span>
+                  <span>${this.formatTime(post.created_utc)}</span>
+                  <span>${this.formatNum(post.num_comments)} comments</span>
+                </div>
+                <div class="post-body">${this.renderContent(post)}</div>
+              </div>
+            </div>
+            <div class="comments-container">
+              <div class="comments-header">Comments (${this.formatNum(post.num_comments)})</div>
+              <div>${this.renderComments(comments)}</div>
+            </div>
+          `;
+        }
+
+        renderContent(post) {
+          let html = "";
+
+          if (post.selftext?.trim()) {
+            html += `<div class="post-selftext">${this.decode(
+              post.selftext,
+            )}</div>`;
+          }
+
+          html += '<div class="post-media">';
+
+          if (post.is_gallery && post.gallery_data && post.media_metadata) {
+            html += this.renderGallery(post);
+          } else if (post.is_video && post.media?.reddit_video) {
+            html += `<video class="post-video" controls><source src="${post.media.reddit_video.fallback_url}" type="video/mp4"></video>`;
+          } else if (post.post_hint === "image" || this.isImage(post.url)) {
+            const imgUrl = post.preview?.images?.[0]?.source?.url
+              ? this.decode(post.preview.images[0].source.url)
+              : post.url;
+            html += `<img src="${imgUrl}" alt="${this.decode(
+              post.title,
+            )}" class="post-image" />`;
+          } else if (post.url && post.url !== post.permalink && !post.is_self) {
+            const thumb = post.thumbnail?.startsWith("http")
+              ? `<img src="${post.thumbnail}" class="post-thumbnail" alt="Link preview" />`
+              : "";
+            html += `<a href="${post.url}" target="_blank" rel="noopener noreferrer" class="post-link">${thumb}<div>${post.url}</div></a>`;
+          }
+
+          html += "</div>";
+          return html;
+        }
+
+        renderGallery(post) {
+          const items = post.gallery_data.items;
+          const metadata = post.media_metadata;
+
+          let html =
+            '<div class="gallery-container"><div class="gallery-images" id="gallery-images">';
+
+          items.forEach((item, i) => {
+            const media = metadata[item.media_id];
+            if (media?.s) {
+              const url = this.decode(media.s.u || media.s.gif);
+              html += `<img src="${url}" alt="Image ${
+                i + 1
+              }" class="gallery-image" />`;
+            }
+          });
+
+          html += "</div>";
+
+          if (items.length > 1) {
+            html += `
+              <button class="gallery-nav gallery-prev" onclick="viewer.navGallery(-1)">‹</button>
+              <button class="gallery-nav gallery-next" onclick="viewer.navGallery(1)">›</button>
+              <div class="gallery-indicator"><span id="gallery-current">1</span> / ${items.length}</div>
+            `;
+          }
+
+          html += "</div>";
+          return html;
+        }
+
+        renderComments(comments, depth = 0) {
+          if (!comments || !Array.isArray(comments)) return "";
+
+          return comments
+            .map((comment) => {
+              if (comment.kind === "t1" && comment.data) {
+                const d = comment.data;
+                const nested = depth > 0 ? "nested" : "";
+                let html = `
+                <div class="comment ${nested}">
+                  <div class="comment-author">
+                    <span class="comment-author-name">u/${d.author}</span>
+                    <span>• ${this.formatTime(d.created_utc)}</span>
+                  </div>
+                  <div class="comment-body">${this.decode(d.body)}</div>
+              `;
+
+                if (d.replies?.data?.children) {
+                  html += this.renderComments(d.replies.data.children, depth + 1);
+                }
+
+                html += "</div>";
+                return html;
+              } else if (comment.kind === "more" && comment.data?.count > 0) {
+                return `<div class="comment-more">${comment.data.count} more ${comment.data.count !== 1 ? "comments" : "comment"}</div>`;
+              }
+              return "";
+            })
+            .join("");
+        }
+
+        navGallery(dir) {
+          const gallery = document.getElementById("gallery-images");
+          const total = gallery.querySelectorAll(".gallery-image").length;
+
+          this.galleryIndex = (this.galleryIndex + dir + total) % total;
+          gallery.style.transform = `translateX(-${this.galleryIndex * 100}%)`;
+
+          const indicator = document.getElementById("gallery-current");
+          if (indicator) indicator.textContent = this.galleryIndex + 1;
+        }
+
+        isImage(url) {
+          return (
+            /\.(jpg|jpeg|png|gif|webp)$/i.test(url) ||
+            url?.includes("i.redd.it") ||
+            url?.includes("i.imgur.com")
+          );
+        }
+
+        formatNum(num) {
+          if (num >= 1e6) return (num / 1e6).toFixed(1) + "M";
+          if (num >= 1e3) return (num / 1e3).toFixed(1) + "k";
+          return num.toString();
+        }
+
+        formatTime(ts) {
+          const diff = Date.now() / 1000 - ts;
+          if (diff < 60) return "just now";
+          if (diff < 3600)
+            return `${Math.floor(diff / 60)} minute${
+              Math.floor(diff / 60) !== 1 ? "s" : ""
+            } ago`;
+          if (diff < 86400)
+            return `${Math.floor(diff / 3600)} hour${
+              Math.floor(diff / 3600) !== 1 ? "s" : ""
+            } ago`;
+          if (diff < 2592000)
+            return `${Math.floor(diff / 86400)} day${
+              Math.floor(diff / 86400) !== 1 ? "s" : ""
+            } ago`;
+          return new Date(ts * 1000).toLocaleDateString();
+        }
+
+        decode(html) {
+          if (!html) return "";
+          const txt = document.createElement("textarea");
+          txt.innerHTML = html;
+          return txt.value;
+        }
+
+        showLoading() {
+          document.getElementById("app").innerHTML =
+            '<div class="loading"><div class="spinner"></div><div>Loading post...</div></div>';
+        }
+
+        showError(msg) {
+          document.getElementById(
+            "app",
+          ).innerHTML = `<div class="error"><h2>Error</h2><p>${msg}</p></div>`;
+        }
+      }
+
+      let viewer;
+      document.addEventListener("DOMContentLoaded", () => {
+        viewer = new RedditPostViewer();
+      });
+    </script>
+  </body>
+</html>

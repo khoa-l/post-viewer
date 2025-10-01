@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reddit Authentication</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background-color: #dae0e6;
+        padding: 2rem;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        color: #ff4500;
+        margin-bottom: 1rem;
+      }
+
+      .status {
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+      }
+
+      .success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+
+      .info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+
+      .btn {
+        background: #ff4500;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        text-decoration: none;
+        display: inline-block;
+      }
+
+      .btn:hover {
+        background: #cc3700;
+      }
+
+      .setup-info {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+        font-size: 0.875rem;
+      }
+
+      code {
+        background: #f1f1f1;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-radius: 50%;
+        border-top-color: #ff4500;
+        animation: spin 1s linear infinite;
+        margin-right: 0.5rem;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Reddit Authentication</h1>
+
+      <div id="status"></div>
+
+      <div id="auth-section">
+        <p style="margin-bottom: 1rem;">
+          Authenticate with Reddit to get your access token.
+        </p>
+
+        <div class="setup-info">
+          <strong>Setup:</strong>
+          <ol style="margin: 0.5rem 0 0 1.5rem; line-height: 1.8;">
+            <li>Create Reddit app at <a href="https://www.reddit.com/prefs/apps" target="_blank">reddit.com/prefs/apps</a></li>
+            <li>Set redirect URI to: <code id="redirect-uri"></code></li>
+            <li>Update server.js with your client ID and secret</li>
+          </ol>
+        </div>
+
+        <button id="connect-btn" class="btn">Connect to Reddit</button>
+      </div>
+
+      <div id="success-section" style="display: none;">
+        <div class="success">
+          Token saved! Copy it to custom-client.html CONFIG.token
+        </div>
+        <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 4px; word-break: break-all;">
+          <strong>Your Token:</strong><br>
+          <code id="token-display" style="font-size: 0.75rem;"></code>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const CONFIG = {
+        clientId: "i3It5V7LR6o2s5BCTy-82A",
+        backendUrl: "http://localhost:3001",
+        scope: "read mysubreddits"
+      };
+
+      class RedditAuth {
+        constructor() {
+          this.redirectUri = window.location.origin + window.location.pathname;
+          this.init();
+        }
+
+        init() {
+          document.getElementById('redirect-uri').textContent = this.redirectUri;
+          document.getElementById('connect-btn').addEventListener('click', () => this.startAuth());
+
+          const token = localStorage.getItem('reddit_access_token');
+          if (token) {
+            this.showSuccess(token);
+          }
+
+          this.handleCallback();
+        }
+
+        handleCallback() {
+          const params = new URLSearchParams(window.location.search);
+          const code = params.get('code');
+          const error = params.get('error');
+
+          if (error) {
+            this.showStatus('Authentication failed: ' + error, 'error');
+            return;
+          }
+
+          if (code) {
+            this.exchangeToken(code);
+          }
+        }
+
+        startAuth() {
+          const state = Math.random().toString(36).substring(7);
+          localStorage.setItem('oauth_state', state);
+
+          const authUrl = 'https://www.reddit.com/api/v1/authorize?' + new URLSearchParams({
+            client_id: CONFIG.clientId,
+            response_type: 'code',
+            state: state,
+            redirect_uri: this.redirectUri,
+            duration: 'permanent',
+            scope: CONFIG.scope,
+          });
+
+          window.location.href = authUrl;
+        }
+
+        async exchangeToken(code) {
+          this.showStatus('<span class="spinner"></span>Getting token...', 'info');
+
+          try {
+            const response = await fetch(`${CONFIG.backendUrl}/oauth/token`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                code: code,
+                redirect_uri: this.redirectUri,
+              }),
+            });
+
+            if (!response.ok) {
+              const data = await response.json();
+              throw new Error(data.error || 'Token exchange failed');
+            }
+
+            const data = await response.json();
+
+            if (data.access_token) {
+              localStorage.setItem('reddit_access_token', data.access_token);
+              if (data.refresh_token) {
+                localStorage.setItem('reddit_refresh_token', data.refresh_token);
+              }
+
+              window.history.replaceState({}, document.title, window.location.pathname);
+              this.showSuccess(data.access_token);
+            } else {
+              throw new Error('No token received');
+            }
+          } catch (error) {
+            console.error('Error:', error);
+            let msg = 'Failed: ' + error.message;
+            if (error.message.includes('fetch')) {
+              msg += `<br><br>Is backend running on ${CONFIG.backendUrl}?`;
+            }
+            this.showStatus(msg, 'error');
+          }
+        }
+
+        showStatus(message, type) {
+          document.getElementById('status').innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        showSuccess(token) {
+          document.getElementById('auth-section').style.display = 'none';
+          document.getElementById('success-section').style.display = 'block';
+          document.getElementById('token-display').textContent = token;
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        new RedditAuth();
+      });
+    </script>
+  </body>
+</html>
