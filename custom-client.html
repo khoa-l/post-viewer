@@ -330,6 +330,13 @@
         font-size: 0.85em;
       }
 
+      .comment-body hr,
+      .post-selftext hr {
+        border: none;
+        border-top: 1px solid #ccc;
+        margin: 1rem 0;
+      }
+
       .comment-more {
         color: #0079d3;
         font-size: 0.875rem;
@@ -771,9 +778,19 @@
           // Convert code: `code`
           text = text.replace(/`([^`]+?)`/g, '<code>$1</code>');
 
-          // Convert quotes: lines starting with >
-          text = text.replace(/^&gt;\s?(.+)$/gm, '<blockquote>$1</blockquote>');
-          text = text.replace(/^>\s?(.+)$/gm, '<blockquote>$1</blockquote>');
+          // Convert horizontal rules: --- or *** or ___
+          text = text.replace(/^(\-{3,}|\*{3,}|_{3,})$/gm, '<hr>');
+
+          // Convert quotes: handle multi-line quotes properly
+          // First, mark quote lines (including empty quote lines)
+          text = text.replace(/^&gt;\s?(.*)$/gm, '<QUOTE>$1</QUOTE>');
+          text = text.replace(/^>\s?(.*)$/gm, '<QUOTE>$1</QUOTE>');
+
+          // Merge consecutive quote lines into single blockquote
+          text = text.replace(/(<QUOTE>.*?<\/QUOTE>\n?)+/g, (match) => {
+            const content = match.replace(/<QUOTE>(.*?)<\/QUOTE>\n?/g, '$1\n').trim();
+            return `<blockquote>${content}</blockquote>`;
+          });
 
           // Convert plain image URLs to images (including gifs)
           text = text.replace(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|gifv|webp)(?:\?[^\s]*)?)/gi, (url) => {
