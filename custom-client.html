@@ -107,6 +107,23 @@
         word-wrap: break-word;
       }
 
+      .post-selftext img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0.5rem 0;
+        border-radius: 4px;
+      }
+
+      .post-selftext a {
+        color: #0079d3;
+        text-decoration: none;
+      }
+
+      .post-selftext a:hover {
+        text-decoration: underline;
+      }
+
       .post-media {
         margin: 1rem 0;
       }
@@ -551,7 +568,7 @@
           let html = "";
 
           if (post.selftext?.trim()) {
-            html += `<div class="post-selftext">${this.decode(
+            html += `<div class="post-selftext">${this.formatCommentBody(
               post.selftext,
             )}</div>`;
           }
