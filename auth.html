@@ -127,10 +127,12 @@
 
       <div id="success-section" style="display: none;">
         <div class="success">
-          Token saved! Copy it to custom-client.html CONFIG.token
+          Token saved! Copy it to your .env file
         </div>
-        <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 4px; word-break: break-all;">
-          <strong>Your Token:</strong><br>
+        <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 4px; word-break: break-all; position: relative;">
+          <strong>Your Token:</strong>
+          <button id="copy-btn" style="position: absolute; top: 0.5rem; right: 0.5rem; padding: 0.5rem; background: #ff4500; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">Copy</button>
+          <br>
           <code id="token-display" style="font-size: 0.75rem;"></code>
         </div>
       </div>
@@ -244,6 +246,17 @@
           document.getElementById('auth-section').style.display = 'none';
           document.getElementById('success-section').style.display = 'block';
           document.getElementById('token-display').textContent = token;
+
+          document.getElementById('copy-btn').addEventListener('click', () => {
+            navigator.clipboard.writeText(token).then(() => {
+              const btn = document.getElementById('copy-btn');
+              const originalText = btn.textContent;
+              btn.textContent = 'Copied!';
+              setTimeout(() => {
+                btn.textContent = originalText;
+              }, 2000);
+            });
+          });
         }
       }
 
