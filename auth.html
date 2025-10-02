@@ -240,6 +240,7 @@
         }
 
         showSuccess(token) {
+          document.getElementById('status').innerHTML = '';
           document.getElementById('auth-section').style.display = 'none';
           document.getElementById('success-section').style.display = 'block';
           document.getElementById('token-display').textContent = token;
