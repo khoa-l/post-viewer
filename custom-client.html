@@ -732,6 +732,11 @@
             return `<img src="${url}" alt="Image" />`;
           });
 
+          // Convert plain URLs to clickable links (that aren't already in HTML tags)
+          text = text.replace(/(?<!["'])(https?:\/\/[^\s<]+)/gi, (url) => {
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+          });
+
           return text;
         }
 
