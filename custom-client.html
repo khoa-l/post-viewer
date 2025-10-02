@@ -114,8 +114,8 @@
       .media-frame {
         width: 100%;
         max-width: 960px;
-        min-height: 200px;
-        max-height: 540px;
+        min-height: min(200px, 30vh);
+        max-height: min(540px, 60vh);
         margin: 0 auto;
         display: flex;
         align-items: center;
@@ -124,6 +124,7 @@
         border-radius: 4px;
         overflow: hidden;
         position: relative;
+        aspect-ratio: 16 / 9;
       }
 
       .post-image,
@@ -134,10 +135,6 @@
         height: auto;
         display: block;
         object-fit: contain;
-      }
-
-      .post-video {
-        width: 100%;
       }
 
       .post-link {
@@ -166,8 +163,8 @@
         position: relative;
         width: 100%;
         max-width: 960px;
-        min-height: 200px;
-        max-height: 540px;
+        min-height: min(200px, 30vh);
+        max-height: min(540px, 60vh);
         margin: 0 auto;
         overflow: hidden;
         border-radius: 4px;
@@ -175,6 +172,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        aspect-ratio: 16 / 9;
       }
 
       .gallery-images {

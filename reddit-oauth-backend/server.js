@@ -73,6 +73,12 @@ app.get("/api/config", (req, res) => {
   });
 });
 
+// API endpoint to list all cached posts
+app.get("/api/cache", (req, res) => {
+  const posts = getAllCachedPosts();
+  res.json({ posts, count: posts.length });
+});
+
 // OAuth token exchange endpoint
 app.post("/oauth/token", async (req, res) => {
   const { code, redirect_uri } = req.body;
@@ -151,9 +157,12 @@ function getCachedPost(redditPath) {
 
   if (fs.existsSync(cacheFile)) {
     try {
-      const data = fs.readFileSync(cacheFile, "utf8");
+      const fileData = fs.readFileSync(cacheFile, "utf8");
+      const cached = JSON.parse(fileData);
       console.log("Cache hit:", redditPath);
-      return JSON.parse(data);
+
+      // Return the data part (handle both old and new format)
+      return cached.data || cached;
     } catch (error) {
       console.error("Cache read error:", error);
       return null;
@@ -168,10 +177,61 @@ function cachePost(redditPath, data) {
   const cacheFile = path.join(CACHE_DIR, `${cacheKey}.json`);
 
   try {
-    fs.writeFileSync(cacheFile, JSON.stringify(data, null, 2));
+    // Store metadata alongside cache
+    const cacheData = {
+      path: redditPath,
+      timestamp: new Date().toISOString(),
+      data: data,
+    };
+    fs.writeFileSync(cacheFile, JSON.stringify(cacheData, null, 2));
     console.log("Cached post:", redditPath);
   } catch (error) {
     console.error("Cache write error:", error);
+  }
+}
+
+// Helper: Get all cached posts
+function getAllCachedPosts() {
+  try {
+    const files = fs.readdirSync(CACHE_DIR);
+    const posts = [];
+
+    for (const file of files) {
+      if (file.endsWith(".json")) {
+        const filePath = path.join(CACHE_DIR, file);
+        const content = fs.readFileSync(filePath, "utf8");
+        const cached = JSON.parse(content);
+
+        // Handle both old and new cache format
+        if (cached.data) {
+          // New format with metadata
+          const postData = Array.isArray(cached.data) ? cached.data[0]?.data?.children?.[0]?.data : null;
+          posts.push({
+            path: cached.path,
+            timestamp: cached.timestamp,
+            title: postData?.title || "Unknown",
+            subreddit: postData?.subreddit || "Unknown",
+            author: postData?.author || "Unknown",
+          });
+        } else {
+          // Old format - try to extract post info
+          const postData = Array.isArray(cached) ? cached[0]?.data?.children?.[0]?.data : null;
+          posts.push({
+            path: "unknown",
+            timestamp: fs.statSync(filePath).mtime.toISOString(),
+            title: postData?.title || "Unknown",
+            subreddit: postData?.subreddit || "Unknown",
+            author: postData?.author || "Unknown",
+          });
+        }
+      }
+    }
+
+    // Sort by timestamp, newest first
+    return posts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  } catch (error) {
+    console.error("Error reading cache:", error);
+    return [];
   }
 }
 

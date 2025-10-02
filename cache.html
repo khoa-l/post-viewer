@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cached Reddit Posts</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+          "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+          "Helvetica Neue", sans-serif;
+        background-color: #dae0e6;
+        color: #1c1c1c;
+        line-height: 1.5;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+
+      .header {
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .header h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .header p {
+        color: #7c7c7c;
+        font-size: 0.875rem;
+      }
+
+      .stats {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #edeff1;
+        font-size: 0.875rem;
+        color: #7c7c7c;
+      }
+
+      .error,
+      .loading {
+        background: #fff;
+        border-radius: 4px;
+        padding: 2rem;
+        text-align: center;
+      }
+
+      .error {
+        border: 1px solid #ff4500;
+        color: #ff4500;
+      }
+
+      .loading {
+        color: #666;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-radius: 50%;
+        border-top-color: #ff4500;
+        animation: spin 1s linear infinite;
+        margin-bottom: 1rem;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .post-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .post-item {
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 1rem;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        transition: background 0.2s ease;
+      }
+
+      .post-item:hover {
+        background: #f6f7f8;
+        border-color: #999;
+      }
+
+      .post-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+        color: #1c1c1c;
+      }
+
+      .post-meta {
+        font-size: 0.75rem;
+        color: #7c7c7c;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      .subreddit {
+        color: #0079d3;
+        font-weight: 600;
+      }
+
+      .empty-state {
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 3rem 2rem;
+        text-align: center;
+      }
+
+      .empty-state h2 {
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+        color: #7c7c7c;
+      }
+
+      .empty-state p {
+        color: #999;
+        font-size: 0.875rem;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          margin: 0.5rem auto;
+          padding: 0 0.5rem;
+        }
+
+        .header {
+          padding: 1rem;
+        }
+
+        .header h1 {
+          font-size: 1.25rem;
+        }
+
+        .post-item {
+          padding: 0.75rem;
+        }
+
+        .post-title {
+          font-size: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Cached Reddit Posts</h1>
+        <p>Browse all previously viewed posts stored in cache</p>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div id="app"></div>
+    </div>
+
+    <script>
+      class CacheViewer {
+        constructor() {
+          this.initConfig();
+        }
+
+        async initConfig() {
+          try {
+            const backendUrl = window.location.origin.includes('localhost')
+              ? 'http://localhost:3001'
+              : window.location.origin;
+
+            this.backendUrl = backendUrl;
+            this.loadCache();
+          } catch (error) {
+            console.error('Config error:', error);
+            this.showError(`Failed to load config: ${error.message}`);
+          }
+        }
+
+        async loadCache() {
+          this.showLoading();
+
+          try {
+            const response = await fetch(`${this.backendUrl}/api/cache`);
+
+            if (!response.ok) {
+              throw new Error("Failed to fetch cache");
+            }
+
+            const { posts, count } = await response.json();
+
+            if (posts.length === 0) {
+              this.showEmpty();
+            } else {
+              this.displayPosts(posts, count);
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            this.showError(`Failed to load cached posts: ${error.message}`);
+          }
+        }
+
+        displayPosts(posts, count) {
+          document.getElementById("stats").innerHTML = `
+            <strong>${count}</strong> cached post${count !== 1 ? 's' : ''}
+          `;
+
+          const postListHTML = posts
+            .map(
+              (post) => `
+            <a href="custom-client.html?url=${encodeURIComponent(post.path)}" class="post-item">
+              <div class="post-title">${this.escapeHtml(post.title)}</div>
+              <div class="post-meta">
+                <span class="meta-item">
+                  <span class="subreddit">r/${this.escapeHtml(post.subreddit)}</span>
+                </span>
+                <span class="meta-item">
+                  u/${this.escapeHtml(post.author)}
+                </span>
+                <span class="meta-item">
+                  ${this.formatTime(post.timestamp)}
+                </span>
+              </div>
+            </a>
+          `,
+            )
+            .join("");
+
+          document.getElementById("app").innerHTML = `
+            <div class="post-list">${postListHTML}</div>
+          `;
+        }
+
+        showEmpty() {
+          document.getElementById("stats").innerHTML = "0 cached posts";
+          document.getElementById("app").innerHTML = `
+            <div class="empty-state">
+              <h2>No cached posts yet</h2>
+              <p>Visit some Reddit posts to see them appear here</p>
+            </div>
+          `;
+        }
+
+        formatTime(timestamp) {
+          const date = new Date(timestamp);
+          const now = new Date();
+          const diff = (now - date) / 1000;
+
+          if (diff < 60) return "just now";
+          if (diff < 3600)
+            return `${Math.floor(diff / 60)} minute${Math.floor(diff / 60) !== 1 ? "s" : ""} ago`;
+          if (diff < 86400)
+            return `${Math.floor(diff / 3600)} hour${Math.floor(diff / 3600) !== 1 ? "s" : ""} ago`;
+          if (diff < 2592000)
+            return `${Math.floor(diff / 86400)} day${Math.floor(diff / 86400) !== 1 ? "s" : ""} ago`;
+
+          return date.toLocaleDateString();
+        }
+
+        escapeHtml(text) {
+          const div = document.createElement("div");
+          div.textContent = text;
+          return div.innerHTML;
+        }
+
+        showLoading() {
+          document.getElementById("app").innerHTML =
+            '<div class="loading"><div class="spinner"></div><div>Loading cached posts...</div></div>';
+        }
+
+        showError(msg) {
+          document.getElementById("app").innerHTML =
+            `<div class="error"><h2>Error</h2><p>${msg}</p></div>`;
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        new CacheViewer();
+      });
+    </script>
+  </body>
+</html>
