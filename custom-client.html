@@ -755,6 +755,19 @@
           if (!body) return "";
           let text = this.decode(body);
 
+          // Convert horizontal rules: --- or *** or ___ (with optional leading/trailing whitespace)
+          text = text.replace(/^\s*(\-{3,}|\*{3,}|_{3,})\s*$/gm, '<hr>');
+
+          // Convert quotes: handle multi-line quotes properly
+          // First, mark quote lines (including empty quote lines) and remove the > marker
+          text = text.replace(/^>\s?(.*)$/gm, '<QUOTE>$1</QUOTE>');
+
+          // Merge consecutive quote lines into single blockquote
+          text = text.replace(/(<QUOTE>.*?<\/QUOTE>\n?)+/g, (match) => {
+            const content = match.replace(/<QUOTE>(.*?)<\/QUOTE>\n?/g, '$1\n').trim();
+            return `<blockquote>${content}</blockquote>`;
+          });
+
           // Convert markdown links to HTML: [text](url)
           text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
             // Check if the URL is an image
@@ -777,20 +790,6 @@
 
           // Convert code: `code`
           text = text.replace(/`([^`]+?)`/g, '<code>$1</code>');
-
-          // Convert horizontal rules: --- or *** or ___
-          text = text.replace(/^(\-{3,}|\*{3,}|_{3,})$/gm, '<hr>');
-
-          // Convert quotes: handle multi-line quotes properly
-          // First, mark quote lines (including empty quote lines)
-          text = text.replace(/^&gt;\s?(.*)$/gm, '<QUOTE>$1</QUOTE>');
-          text = text.replace(/^>\s?(.*)$/gm, '<QUOTE>$1</QUOTE>');
-
-          // Merge consecutive quote lines into single blockquote
-          text = text.replace(/(<QUOTE>.*?<\/QUOTE>\n?)+/g, (match) => {
-            const content = match.replace(/<QUOTE>(.*?)<\/QUOTE>\n?/g, '$1\n').trim();
-            return `<blockquote>${content}</blockquote>`;
-          });
 
           // Convert plain image URLs to images (including gifs)
           text = text.replace(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|gifv|webp)(?:\?[^\s]*)?)/gi, (url) => {
