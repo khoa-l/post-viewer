@@ -300,6 +300,36 @@
         text-decoration: underline;
       }
 
+      .comment-body blockquote {
+        border-left: 3px solid #ccc;
+        padding-left: 1rem;
+        margin: 0.5rem 0;
+        color: #666;
+      }
+
+      .comment-body code {
+        background: #f6f7f8;
+        padding: 0.125rem 0.25rem;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 0.85em;
+      }
+
+      .post-selftext blockquote {
+        border-left: 3px solid #ccc;
+        padding-left: 1rem;
+        margin: 0.5rem 0;
+        color: #666;
+      }
+
+      .post-selftext code {
+        background: #f6f7f8;
+        padding: 0.125rem 0.25rem;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 0.85em;
+      }
+
       .comment-more {
         color: #0079d3;
         font-size: 0.875rem;
@@ -726,6 +756,24 @@
             }
             return `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
           });
+
+          // Convert bold: **text** or __text__
+          text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+          text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+          // Convert italic: *text* or _text_ (but not in URLs or already processed markdown)
+          text = text.replace(/(?<!\*)\*(?!\*)([^*]+?)\*(?!\*)/g, '<em>$1</em>');
+          text = text.replace(/(?<!_)_(?!_)([^_]+?)_(?!_)/g, '<em>$1</em>');
+
+          // Convert strikethrough: ~~text~~
+          text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+          // Convert code: `code`
+          text = text.replace(/`([^`]+?)`/g, '<code>$1</code>');
+
+          // Convert quotes: lines starting with >
+          text = text.replace(/^&gt;\s?(.+)$/gm, '<blockquote>$1</blockquote>');
+          text = text.replace(/^>\s?(.+)$/gm, '<blockquote>$1</blockquote>');
 
           // Convert plain image URLs to images (including gifs)
           text = text.replace(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|gifv|webp)(?:\?[^\s]*)?)/gi, (url) => {
