@@ -727,8 +727,8 @@
             return `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
           });
 
-          // Convert plain image URLs to images
-          text = text.replace(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?)/gi, (url) => {
+          // Convert plain image URLs to images (including gifs)
+          text = text.replace(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|gifv|webp)(?:\?[^\s]*)?)/gi, (url) => {
             return `<img src="${url}" alt="Image" />`;
           });
 
