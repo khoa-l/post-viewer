@@ -139,7 +139,9 @@
     <script>
       const CONFIG = {
         clientId: "i3It5V7LR6o2s5BCTy-82A",
-        backendUrl: "http://localhost:3001",
+        backendUrl: window.location.origin.includes('localhost')
+          ? 'http://localhost:3001'
+          : window.location.origin,
         scope: "read mysubreddits"
       };
 
