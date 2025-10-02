@@ -80,6 +80,45 @@ app.get("/api/cache", (req, res) => {
   res.json({ posts, count: posts.length });
 });
 
+// API endpoint to import cache data
+app.post("/api/cache/import", (req, res) => {
+  try {
+    const { posts } = req.body;
+
+    if (!posts || !Array.isArray(posts)) {
+      return res.status(400).json({ error: "Invalid cache data format" });
+    }
+
+    let imported = 0;
+
+    // Import each post into the cache
+    posts.forEach(post => {
+      if (post.path && post.data) {
+        const cacheKey = getCacheKey(post.path);
+        const cacheFile = path.join(CACHE_DIR, `${cacheKey}.json`);
+
+        const cacheData = {
+          path: post.path,
+          timestamp: post.timestamp || new Date().toISOString(),
+          data: post.data,
+        };
+
+        fs.writeFileSync(cacheFile, JSON.stringify(cacheData, null, 2));
+        imported++;
+      }
+    });
+
+    res.json({
+      success: true,
+      imported: imported,
+      message: `Successfully imported ${imported} posts`
+    });
+  } catch (error) {
+    console.error("Cache import error:", error);
+    res.status(500).json({ error: "Failed to import cache", message: error.message });
+  }
+});
+
 // OAuth token exchange endpoint
 app.post("/oauth/token", async (req, res) => {
   const { code, redirect_uri } = req.body;
@@ -191,7 +230,7 @@ function cachePost(redditPath, data) {
   }
 }
 
-// Helper: Get all cached posts
+// Helper: Get all cached posts (for display)
 function getAllCachedPosts() {
   try {
     const files = fs.readdirSync(CACHE_DIR);
@@ -210,6 +249,7 @@ function getAllCachedPosts() {
           posts.push({
             path: cached.path,
             timestamp: cached.timestamp,
+            data: cached.data, // Include full data for export
             title: postData?.title || "Unknown",
             subreddit: postData?.subreddit || "Unknown",
             author: postData?.author || "Unknown",
@@ -220,6 +260,7 @@ function getAllCachedPosts() {
           posts.push({
             path: "unknown",
             timestamp: fs.statSync(filePath).mtime.toISOString(),
+            data: cached, // Include full data for export
             title: postData?.title || "Unknown",
             subreddit: postData?.subreddit || "Unknown",
             author: postData?.author || "Unknown",

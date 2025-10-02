@@ -44,6 +44,38 @@
         font-size: 0.875rem;
       }
 
+      .actions {
+        margin-top: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        padding: 0.5rem 1rem;
+        background: #0079d3;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: background 0.2s ease;
+      }
+
+      .btn:hover {
+        background: #0060a8;
+      }
+
+      .btn-secondary {
+        background: #edeff1;
+        color: #1c1c1c;
+      }
+
+      .btn-secondary:hover {
+        background: #dae0e6;
+      }
+
       .stats {
         margin-top: 1rem;
         padding-top: 1rem;
@@ -184,6 +216,11 @@
       <div class="header">
         <h1>Cached Reddit Posts</h1>
         <p>Browse all previously viewed posts stored in cache</p>
+        <div class="actions">
+          <button class="btn" onclick="viewer.exportCache()">Export Cache</button>
+          <button class="btn" onclick="viewer.importCache()">Import Cache</button>
+          <input type="file" id="import-file" accept=".json" style="display: none;" onchange="viewer.handleImportFile(event)" />
+        </div>
         <div class="stats" id="stats"></div>
       </div>
       <div id="app"></div>
@@ -304,10 +341,63 @@
           document.getElementById("app").innerHTML =
             `<div class="error"><h2>Error</h2><p>${msg}</p></div>`;
         }
+
+        async exportCache() {
+          try {
+            const response = await fetch(`${this.backendUrl}/api/cache`);
+            if (!response.ok) throw new Error("Failed to fetch cache");
+
+            const data = await response.json();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `reddit-cache-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          } catch (error) {
+            console.error("Export error:", error);
+            alert(`Failed to export cache: ${error.message}`);
+          }
+        }
+
+        importCache() {
+          document.getElementById('import-file').click();
+        }
+
+        async handleImportFile(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+
+            const response = await fetch(`${this.backendUrl}/api/cache/import`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data)
+            });
+
+            if (!response.ok) throw new Error("Failed to import cache");
+
+            alert('Cache imported successfully!');
+            this.loadCache();
+          } catch (error) {
+            console.error("Import error:", error);
+            alert(`Failed to import cache: ${error.message}`);
+          }
+
+          // Reset file input
+          event.target.value = '';
+        }
       }
 
+      let viewer;
       document.addEventListener("DOMContentLoaded", () => {
-        new CacheViewer();
+        viewer = new CacheViewer();
       });
     </script>
   </body>

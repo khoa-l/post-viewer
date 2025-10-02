@@ -100,9 +100,33 @@
       @keyframes spin {
         to { transform: rotate(360deg); }
       }
+
+      .cache-button {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        padding: 0.75rem 1.25rem;
+        background: #0079d3;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        transition: background 0.2s ease, box-shadow 0.2s ease;
+        z-index: 1000;
+        text-decoration: none;
+      }
+
+      .cache-button:hover {
+        background: #0060a8;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
     </style>
   </head>
   <body>
+    <a href="cache.html" class="cache-button">View Cache</a>
     <div class="container">
       <h1>Reddit Authentication</h1>
 
