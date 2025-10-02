@@ -640,7 +640,16 @@
           if (post.is_gallery && post.gallery_data && post.media_metadata) {
             html += this.renderGallery(post);
           } else if (post.is_video && post.media?.reddit_video) {
-            html += `<div class="media-frame"><video class="post-video" controls><source src="${post.media.reddit_video.fallback_url}" type="video/mp4"></video></div>`;
+            const video = post.media.reddit_video;
+            const isGif = video.is_gif;
+
+            if (isGif) {
+              // GIF - muted and looping
+              html += `<div class="media-frame"><video class="post-video" controls muted loop><source src="${video.fallback_url}" type="video/mp4"></video></div>`;
+            } else {
+              // Regular video - just show muted (may or may not have audio in the stream)
+              html += `<div class="media-frame"><video class="post-video" controls muted><source src="${video.fallback_url}" type="video/mp4"></video></div>`;
+            }
           } else if (post.post_hint === "image" || this.isImage(post.url)) {
             const imgUrl = post.preview?.images?.[0]?.source?.url
               ? this.decode(post.preview.images[0].source.url)
