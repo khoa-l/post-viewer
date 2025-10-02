@@ -13,11 +13,12 @@ const crypto = require("crypto");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Cache directory
-const CACHE_DIR = path.join(__dirname, "cache");
+// Cache directory - use persistent disk on Render, fallback to local cache
+const CACHE_DIR = process.env.CACHE_DIR || path.join(__dirname, "cache");
 if (!fs.existsSync(CACHE_DIR)) {
   fs.mkdirSync(CACHE_DIR, { recursive: true });
 }
+console.log("Cache directory:", CACHE_DIR);
 
 // Serve static files from parent directory for frontend
 app.use(express.static(path.join(__dirname, "..")));
