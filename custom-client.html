@@ -266,6 +266,23 @@
         margin-bottom: 0.5rem;
       }
 
+      .comment-body img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0.5rem 0;
+        border-radius: 4px;
+      }
+
+      .comment-body a {
+        color: #0079d3;
+        text-decoration: none;
+      }
+
+      .comment-body a:hover {
+        text-decoration: underline;
+      }
+
       .comment-more {
         color: #0079d3;
         font-size: 0.875rem;
@@ -608,7 +625,7 @@
                     <span class="comment-author-name">u/${d.author}</span>
                     <span>• ${this.formatTime(d.created_utc)}</span>
                   </div>
-                  <div class="comment-body">${this.decode(d.body)}</div>
+                  <div class="comment-body">${this.formatCommentBody(d.body)}</div>
               `;
 
                 if (d.replies?.data?.children) {
@@ -678,6 +695,27 @@
           const txt = document.createElement("textarea");
           txt.innerHTML = html;
           return txt.value;
+        }
+
+        formatCommentBody(body) {
+          if (!body) return "";
+          let text = this.decode(body);
+
+          // Convert markdown links to HTML: [text](url)
+          text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
+            // Check if the URL is an image
+            if (this.isImage(url)) {
+              return `<img src="${url}" alt="${linkText}" />`;
+            }
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+          });
+
+          // Convert plain image URLs to images
+          text = text.replace(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?)/gi, (url) => {
+            return `<img src="${url}" alt="Image" />`;
+          });
+
+          return text;
         }
 
         showLoading() {
