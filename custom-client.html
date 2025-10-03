@@ -107,7 +107,19 @@
         word-wrap: break-word;
       }
 
-      .post-selftext img {
+      .post-selftext a,
+      .comment-body a {
+        color: #0079d3;
+        text-decoration: none;
+      }
+
+      .post-selftext a:hover,
+      .comment-body a:hover {
+        text-decoration: underline;
+      }
+
+      .post-selftext img,
+      .comment-body img {
         max-width: 100%;
         height: auto;
         display: block;
@@ -115,13 +127,21 @@
         border-radius: 4px;
       }
 
-      .post-selftext a {
-        color: #0079d3;
-        text-decoration: none;
+      .post-selftext blockquote,
+      .comment-body blockquote {
+        border-left: 3px solid #ccc;
+        padding-left: 1rem;
+        margin: 0.5rem 0;
+        color: #666;
       }
 
-      .post-selftext a:hover {
-        text-decoration: underline;
+      .post-selftext code,
+      .comment-body code {
+        background: #f6f7f8;
+        padding: 0.125rem 0.25rem;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 0.85em;
       }
 
       .post-media {
@@ -283,53 +303,6 @@
         white-space: pre-wrap;
         word-wrap: break-word;
         margin-bottom: 0.5rem;
-      }
-
-      .comment-body img {
-        max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 0.5rem 0;
-        border-radius: 4px;
-      }
-
-      .comment-body a {
-        color: #0079d3;
-        text-decoration: none;
-      }
-
-      .comment-body a:hover {
-        text-decoration: underline;
-      }
-
-      .comment-body blockquote {
-        border-left: 3px solid #ccc;
-        padding-left: 1rem;
-        margin: 0.5rem 0;
-        color: #666;
-      }
-
-      .comment-body code {
-        background: #f6f7f8;
-        padding: 0.125rem 0.25rem;
-        border-radius: 3px;
-        font-family: monospace;
-        font-size: 0.85em;
-      }
-
-      .post-selftext blockquote {
-        border-left: 3px solid #ccc;
-        padding-left: 1rem;
-        margin: 0.5rem 0;
-        color: #666;
-      }
-
-      .post-selftext code {
-        background: #f6f7f8;
-        padding: 0.125rem 0.25rem;
-        border-radius: 3px;
-        font-family: monospace;
-        font-size: 0.85em;
       }
 
       .comment-body hr,
@@ -624,6 +597,19 @@
               <div>${this.renderComments(comments)}</div>
             </div>
           `;
+
+          // Attach gallery navigation event listeners
+          this.attachGalleryListeners();
+        }
+
+        attachGalleryListeners() {
+          const galleryNavButtons = document.querySelectorAll('.gallery-nav');
+          galleryNavButtons.forEach(button => {
+            button.addEventListener('click', () => {
+              const direction = parseInt(button.getAttribute('data-direction'), 10);
+              this.navGallery(direction);
+            });
+          });
         }
 
         renderContent(post) {
@@ -689,8 +675,8 @@
 
           if (items.length > 1) {
             html += `
-              <button class="gallery-nav gallery-prev" onclick="viewer.navGallery(-1)">‹</button>
-              <button class="gallery-nav gallery-next" onclick="viewer.navGallery(1)">›</button>
+              <button class="gallery-nav gallery-prev" data-direction="-1">‹</button>
+              <button class="gallery-nav gallery-next" data-direction="1">›</button>
               <div class="gallery-indicator"><span id="gallery-current">1</span> / ${items.length}</div>
             `;
           }
@@ -789,53 +775,77 @@
           if (!body) return "";
           let text = this.decode(body);
 
-          // Convert horizontal rules: --- or *** or ___ (with optional leading/trailing whitespace)
-          text = text.replace(/^\s*(\-{3,}|\*{3,}|_{3,})\s*$/gm, '<hr>');
+          // Use placeholders to protect processed content
+          const placeholders = [];
+          const protect = (content) => {
+            const id = `__PLACEHOLDER_${placeholders.length}__`;
+            placeholders.push(content);
+            return id;
+          };
+          const restore = (text) => {
+            placeholders.forEach((content, i) => {
+              text = text.replace(`__PLACEHOLDER_${i}__`, content);
+            });
+            return text;
+          };
 
-          // Convert quotes: handle multi-line quotes properly
-          // First, mark quote lines (including empty quote lines) and remove the > marker
+          // 1. Convert horizontal rules first
+          text = text.replace(/^\s*(\-{3,}|\*{3,}|_{3,})\s*$/gm, protect('<hr>'));
+
+          // 2. Convert quotes: handle multi-line quotes properly
           text = text.replace(/^>\s?(.*)$/gm, '<QUOTE>$1</QUOTE>');
-
-          // Merge consecutive quote lines into single blockquote
           text = text.replace(/(<QUOTE>.*?<\/QUOTE>\n?)+/g, (match) => {
             const content = match.replace(/<QUOTE>(.*?)<\/QUOTE>\n?/g, '$1\n').trim();
-            return `<blockquote>${content}</blockquote>`;
+            return protect(`<blockquote>${content}</blockquote>`);
           });
 
-          // Convert markdown links to HTML: [text](url)
+          // 3. Convert code blocks (inline code) first to protect them
+          text = text.replace(/`([^`]+?)`/g, (match, code) => {
+            return protect(`<code>${code}</code>`);
+          });
+
+          // 4. Convert markdown links to HTML: [text](url)
           text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
-            // Check if the URL is an image
             if (this.isImage(url)) {
-              return `<img src="${url}" alt="${linkText}" />`;
+              return protect(`<img src="${url}" alt="${linkText}" />`);
             }
-            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+            return protect(`<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`);
           });
 
-          // Convert bold: **text** or __text__
+          // 5. Convert bold: **text** or __text__ (before italic to handle nesting)
           text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
           text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
 
-          // Convert italic: *text* or _text_ (but not in URLs or already processed markdown)
-          text = text.replace(/(?<!\*)\*(?!\*)([^*]+?)\*(?!\*)/g, '<em>$1</em>');
-          text = text.replace(/(?<!_)_(?!_)([^_]+?)_(?!_)/g, '<em>$1</em>');
-
-          // Convert strikethrough: ~~text~~
+          // 6. Convert strikethrough: ~~text~~
           text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
 
-          // Convert code: `code`
-          text = text.replace(/`([^`]+?)`/g, '<code>$1</code>');
+          // 7. Convert italic: *text* or _text_ (without lookbehind)
+          // Process in order: first protect already converted bold/strikethrough
+          // Match single * or _ not followed/preceded by the same character
+          text = text.replace(/\*([^*\s][^*]*?)\*/g, (match, content) => {
+            // Avoid matching if it's part of ** or already in HTML
+            if (match.includes('<') || match.includes('>')) return match;
+            return `<em>${content}</em>`;
+          });
+          text = text.replace(/\b_([^_\s][^_]*?)_\b/g, (match, content) => {
+            // Only match underscores at word boundaries to avoid matching in URLs
+            if (match.includes('<') || match.includes('>')) return match;
+            return `<em>${content}</em>`;
+          });
 
-          // Convert plain image URLs to images (including gifs)
+          // 8. Convert plain image URLs to images
           text = text.replace(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|gifv|webp)(?:\?[^\s]*)?)/gi, (url) => {
-            return `<img src="${url}" alt="Image" />`;
+            return protect(`<img src="${url}" alt="Image" />`);
           });
 
-          // Convert plain URLs to clickable links (that aren't already in HTML tags)
-          text = text.replace(/(?<!["'])(https?:\/\/[^\s<]+)/gi, (url) => {
-            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+          // 9. Convert plain URLs to clickable links
+          text = text.replace(/(https?:\/\/[^\s<]+)/gi, (url) => {
+            // Skip if already part of an HTML tag attribute
+            return protect(`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
           });
 
-          return text;
+          // Restore all protected content
+          return restore(text);
         }
 
         showLoading() {
